@@ -11,6 +11,7 @@
       <link rel="stylesheet" href="https://ritmapres.com/wp-content/themes/betheme/css/layout.css?ver=21.5.8"/>
       <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;500&display=swap" rel="stylesheet">
 <script src="https://code.jquery.com/jquery-3.5.1.min.js" ></script>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <title>Ritmapres - Loyalty Program</title>
 
     <style>

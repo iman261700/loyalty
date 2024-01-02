@@ -1,7 +1,15 @@
 <div class="column-2">
   <img src="/new_image.png" style="max-width:100%;" class="mobile-only"/>&nbsp;
 </div>
+<script>
+  function resetRecaptcha() {
+    // Reset reCAPTCHA token
+    grecaptcha.reset();
+  }
 
+  // Call the resetRecaptcha function when the page is loaded or reloaded
+  document.addEventListener('DOMContentLoaded', resetRecaptcha);
+</script>
 <style>
   .content {
     background: url(/background.jpeg) #fff  no-repeat;
@@ -123,12 +131,13 @@
           <label>City</label>
           <input type="text" name="city" required value=""/>
         </div>
-
-
-  <br clear="both"/>
-        <br/>
+        <br clear="both"/><br/>
+        <!-- Need to change key -->
+        <div class="g-recaptcha" data-sitekey="6LeFIzcpAAAAAGUF9oku4wgH_cOhUlzjf43q6NwL"></div>
+        <br/>  
         <center>
           <a href="/login">Already a member?</a><br/>
+          
           <button class="btn" name="doRegister" type="Submit" style="margin:10px 0px;">Sign Up</button>
         </center>
 

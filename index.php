@@ -158,7 +158,7 @@ function getDeliveryAddress()
 }
 
 $titles = [
-  '/' => 'Member Login',
+  '/' => 'Member Login ',
 
   '/login' => 'Member Login',
   '/signup' => 'Member Registration',
@@ -356,56 +356,89 @@ if (isset($_POST['doClaim'])) {
 if (isset($_POST['doRegister'])) {
     $err = '';
 
-    // Email Registerd?
-    $req = db::query("SELECT * FROM users WHERE email='".db::escape($_POST['email'])."' LIMIT 1");
-    if (db::num_rows($req) == 1) {
-        $err = 'Email Address already exists in our Database. If you have forgotten your password, please use the recovery link on the login page.';
-    }
+    // Verify reCAPTCHA V2
+    // Need to change secret key
+    $recaptcha_secret = '6LeFIzcpAAAAAKMAvl57LzVwWAVQIijR6bmmrHQ6';
+    $recaptcha_response = $_POST['g-recaptcha-response'];
 
-    $salt = md5(json_encode($_POST));
+    // Proceed with reCAPTCHA verification
+    $url = 'https://www.google.com/recaptcha/api/siteverify';
+    $data = [
+        'secret' => $recaptcha_secret,
+        'response' => $recaptcha_response,
+    ];
 
-    // No Errors -> Proceed
-    if (empty($err)) {
-        db::query("INSERT INTO users (fb_id,email,password, salt,first_name, last_name, phone, role,pet) VALUES
-    ('".db::escape($_GET['fb'])."',
-    '".db::escape($_POST['email'])."',
-    '".db::escape(md5($_POST['password'].$pw_hash))."',
-    '".db::escape($salt)."',
-    '".db::escape($_POST['first_name'])."',
-    '".db::escape($_POST['last_name'])."',
-    '".db::escape($_POST['phone'])."','client','".db::escape($_POST['pet'])."')");
+    $options = [
+        'http' => [
+            'header' => 'Content-type: application/x-www-form-urlencoded\r\n',
+            'method' => 'POST',
+            'content' => http_build_query($data),
+        ],
+    ];
 
-        $user_id = db::lastID();
+    $context = stream_context_create($options);
+    $result = file_get_contents($url, false, $context);
+    $result_json = json_decode($result, true);
 
-        db::query("INSERT INTO user_shipping (user_id, first_name, last_name, address_line_1,  postcode, city,phone) VALUES
-      ('".db::escape($user_id)."',
-      '".db::escape($_POST['first_name'])."',
-      '".db::escape($_POST['last_name'])."',
-      '".db::escape($_POST['address'])."',
-      '".db::escape($_POST['zip'])."',
-      '".db::escape($_POST['city'])."',
-      '".db::escape($_POST['phone'])."')");
+    if (!$result_json['success']) 
+    {
+        $err = 'reCAPTCHA verification failed. Please prove that you are not a robot.';
+    } 
+    else 
+    {
 
-        // Activation
-        $hash = md5($_POST['email'].time().'activate');
+        // Email Registerd?
+        $req = db::query("SELECT * FROM users WHERE email='".db::escape($_POST['email'])."' LIMIT 1");
+        if (db::num_rows($req) == 1) {
+            $err = 'Email Address already exists in our Database. If you have forgotten your password, please use the recovery link on the login page.';
+        }
 
-        db::query("INSERT INTO user_activate (user_id, hash) VALUES ('".$user_id."','".$hash."')");
+        $salt = md5(json_encode($_POST));
 
-        $link = 'https://'.$_SERVER['HTTP_HOST'].'/activate/'.$hash;
+        // No Errors -> Proceed
+        if (empty($err)) {
+                db::query("INSERT INTO users (fb_id,email,password, salt,first_name, last_name, phone, role,pet) VALUES
+            ('".db::escape($_GET['fb'])."',
+            '".db::escape($_POST['email'])."',
+            '".db::escape(md5($_POST['password'].$pw_hash))."',
+            '".db::escape($salt)."',
+            '".db::escape($_POST['first_name'])."',
+            '".db::escape($_POST['last_name'])."',
+            '".db::escape($_POST['phone'])."','client','".db::escape($_POST['pet'])."')");
 
-        $email_content = getSettings('email_registration');
-        $email_content = str_replace('%%CONTENT%%', $email_content, file_get_contents('template/email/default.tpl.php'));
-        $email_content = str_replace('%%FOOTER%%', getSettings('email_footer'), $email_content);
-        $email_content = str_replace('%%first_name%%', $_POST['first_name'], $email_content);
-        $email_content = str_replace('%%last_name%%', $_POST['last_name'], $email_content);
-        $email_content = str_replace('%%link%%', $link, $email_content);
+            $user_id = db::lastID();
 
-        // Send Email
-        sendgrid::send($_POST['email'], 'Activate your Account', $email_content, getSettings('EMAIL_FROM'));
+            db::query("INSERT INTO user_shipping (user_id, first_name, last_name, address_line_1,  postcode, city,phone) VALUES
+            ('".db::escape($user_id)."',
+            '".db::escape($_POST['first_name'])."',
+            '".db::escape($_POST['last_name'])."',
+            '".db::escape($_POST['address'])."',
+            '".db::escape($_POST['zip'])."',
+            '".db::escape($_POST['city'])."',
+            '".db::escape($_POST['phone'])."')");
 
-        $uri[1] = 'signup_success';
+            // Activation
+            $hash = md5($_POST['email'].time().'activate');
+
+            db::query("INSERT INTO user_activate (user_id, hash) VALUES ('".$user_id."','".$hash."')");
+
+            $link = 'https://'.$_SERVER['HTTP_HOST'].'/activate/'.$hash;
+
+            $email_content = getSettings('email_registration');
+            $email_content = str_replace('%%CONTENT%%', $email_content, file_get_contents('template/email/default.tpl.php'));
+            $email_content = str_replace('%%FOOTER%%', getSettings('email_footer'), $email_content);
+            $email_content = str_replace('%%first_name%%', $_POST['first_name'], $email_content);
+            $email_content = str_replace('%%last_name%%', $_POST['last_name'], $email_content);
+            $email_content = str_replace('%%link%%', $link, $email_content);
+
+            // Send Email
+            sendgrid::send($_POST['email'], 'Activate your Account', $email_content, getSettings('EMAIL_FROM'));
+
+            $uri[1] = 'signup_success';
+        }
     }
 }
+
 
 if (isset($_POST['doRecovery'])) {
     $err = '';

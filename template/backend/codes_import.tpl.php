@@ -1,43 +1,38 @@
 
 <?php
 
-
-
   if (isset($_POST["save"])) {
 
     $csv = file_get_contents($_FILES["import"]["tmp_name"]);
 
-
     $i = 0;
+    $imported = 0;
+    $existing = 0;
 
-    foreach (explode("\n",$csv) as $line) {
+    try {
+        foreach (explode("\n", $csv) as $line) {
 
+            if ($i > 0) { // Skip Header
 
-      if ($i > 0) { // Skip Header
+                $col = explode(",", $line);
 
-        $col = explode(",",$line);
+                // check if code existing
+                if (db::num_rows(db::query("SELECT id FROM codes WHERE code='" . db::escape($col[0]) . "' AND pin='" . db::escape($col[1]) . "' LIMIT 1")) == 1 || empty($col[0])) {
+                    $existing++;
+                } else {
+                    $imported++;
 
-        // check if code existing
-        if (db::num_rows(db::query("SELECT id FROM codes WHERE code='".db::escape($col[0])."' AND pin='".db::escape($col[1])."' LIMIT 1")) == 1 || empty($col[0])) {
-          $existing++;
+                    db::query("INSERT INTO codes (code, pin, value, product, distributor_code) VALUES ('" . db::escape($col[0]) . "','" . db::escape($col[1]) . "','" . db::escape($col[2]) . "','" . db::escape($col[3]) . "','" . db::escape($col[4]) . "')");
+                }
+            }
+
+            $i++;
         }
-        else {
-          $imported++;
-
-          db::query("INSERT INTO codes (code, pin, value, product, distributor_code) VALUES ('".db::escape($col[0])."','".db::escape($col[1])."','".db::escape($col[2])."','".db::escape($col[3])."','".db::escape($col[4])."')");
-        }
-
-      }
-
-        $i++;
-
-
-
+    } catch (Exception $e) {
+        // Handle the exception
+        echo "Error: " . $e->getMessage();
     }
 
-
-
-    //
     // db::query("INSERT INTO products (product_name,product_category,product_image,product_sku,required_points,status)
     //
     // VALUES ('".db::escape($_POST["product_name"])."',
@@ -47,16 +42,10 @@
     // '".db::escape($_POST["required_points"])."',
     // '".db::escape($_POST["status"])."')");
 
-
-
-
-        ?>
-        <script>alert('Codes Imported: <?=$imported;?> / Codes skipped: <?=$existing;?>');
-
-        </script>
-        <?
-
-  }
+    ?>
+    <script>alert('Codes Imported: <?= $imported; ?> / Codes skipped: <?= $existing; ?>');</script>
+    <?php
+}
 
 
 
